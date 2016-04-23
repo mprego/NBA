@@ -77,30 +77,12 @@ def create_dunk_data(schedule):
     return pd.concat([pd.read_csv('sched1.csv'),pd.read_csv('sched2.csv'), pd.read_csv('sched3.csv'), pd.read_csv('sched4.csv'), pd.read_csv('sched5.csv'), pd.read_csv('sched6.csv')])
 
 
-
-if __name__ == '__main__':
-    #Adds Dunk data to schedule of games
-#    schedule=pd.read_csv('schedule.csv')
-#    dunk_data=create_dunk_data(schedule)
-#    dunk_data.to_csv('dunk_data.csv', index=False)
-
-    #Analyzes to see connection between dunks and winning
-    dunk_data=pd.read_csv('dunk_data.csv')
-#    n_total=len(dunk_data)
-#    n_match=len(dunk_data[dunk_data['Home Team Win']==dunk_data['h_dunk_win']])
-#    n_undet=len(dunk_data[dunk_data['h_dunk_win']==-1])
-#    n_wrong1=len(dunk_data[dunk_data['h_dunk_win']==0][dunk_data['Home Team Win']==1])
-#    n_wrong2=len(dunk_data[dunk_data['h_dunk_win']==1][dunk_data['Home Team Win']==0])
-#    print 'Total Correct Rate: %.2f%%' %(n_match*100.0/n_total)
-#    print 'Selective Correct Rate: %.2f%%' %(n_match*100.0/(n_total-n_undet))
-#    
-    
+# Creates scatter plot of dunk score and points with linear regression line overlayed
+def plot_scatter(dunk_data):
     from bokeh.plotting import figure, output_file, show, ColumnDataSource
     from bokeh.models import HoverTool
-    import numpy as np
-
     # output to static HTML file
-    output_file("line.html")
+    output_file("dunks_graph.html")
     
     x1=dunk_data['h_dunk_score']
     x1=x1.append(dunk_data['a_dunk_score'])
@@ -111,7 +93,7 @@ if __name__ == '__main__':
     Teams=dunk_data['Home Team']
     Teams=Teams.append(dunk_data['Away Team'])   
 
-    
+    # Orange is Home team, Blue is Away Team
     colors=['orange']*(len(x1)/2)+ ['blue']*(len(x1)/2)
     
     from sklearn import linear_model
@@ -142,6 +124,52 @@ if __name__ == '__main__':
     p.circle(x1,y1,size=20, color=colors, alpha=0.5, source=source)
     p.line(x1, pred_y, color='red', line_width=5)
     
-     #show the results
+    # Show the results
     show(p)
+    
+
+# Creates plot of dunk outcome vs game outcome
+def bar_plot(data):
+    from bokeh.charts import Bar, output_file, show
+    cat=['Dunk Score Loss', 'Dunk Score Win']
+    output_file("dunk_bars.html")
+    p=Bar(data, 'Dunk Outcome', values='Winning Pct', agg='mean', title='Dunk Outcome vs Game Outcome')
+    show(p)
+
+if __name__ == '__main__':
+    #Adds Dunk data to schedule of games
+#    schedule=pd.read_csv('schedule.csv')
+#    dunk_data=create_dunk_data(schedule)
+#    dunk_data.to_csv('dunk_data.csv', index=False)
+
+    #Analyzes to see connection between dunks and winning
+    dunk_data=pd.read_csv('dunk_data.csv')
+#    n_total=len(dunk_data)
+#    n_match=len(dunk_data[dunk_data['Home Team Win']==dunk_data['h_dunk_win']])
+#    n_undet=len(dunk_data[dunk_data['h_dunk_win']==-1])
+#    n_wrong1=len(dunk_data[dunk_data['h_dunk_win']==0][dunk_data['Home Team Win']==1])
+#    n_wrong2=len(dunk_data[dunk_data['h_dunk_win']==1][dunk_data['Home Team Win']==0])
+#    print 'Total Correct Rate: %.2f%%' %(n_match*100.0/n_total)
+#    print 'Selective Correct Rate: %.2f%%' %(n_match*100.0/(n_total-n_undet))
+#    
+    
+    # Creates scatter plot of dunk scores vs game scores
+    #plot_scatter(dunk_data)
+    
+    # Prints pearson correlation coefficient
+    import numpy as np
+    x1=dunk_data['h_dunk_score']
+    x1=x1.append(dunk_data['a_dunk_score'])
+    y1=dunk_data['Home Team Score']
+    y1=y1.append(dunk_data['Away Team Score']) 
+    print np.corrcoef(x1,y1)
+    
+    # Creates scatter plot of dunk outcomes vs game outcomes
+    win_pct_loss=np.mean(dunk_data[dunk_data['h_dunk_win']==0]['Home Team Win'])
+    dunk_outcome_data={'Dunk Outcome':['Dunk Loss', 'Dunk Win'], 'Winning Pct':[win_pct_loss, 1-win_pct_loss]}
+    bar_plot(dunk_outcome_data)
+    
+    
+    
+    
     

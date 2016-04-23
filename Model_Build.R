@@ -1,9 +1,60 @@
 setwd("~/Documents/!Research/Github/NBA")
 
+#Import Libraries
 library(e1071)
+library(tree)
+library(randomForest)
+library(neuralnet)
+library(gbm)
 
 #Load Training Data
 train<-read.csv("data515.csv")
+train515=train[,-which(names(train)%in% c('Game_ID', 'Home_5', 'Win_5', 'n.games_a_5', 'n.games_h_5', 'Home_15', 'Win_15'))]
+train515=cbind(train515, yvar=train$Win_5)
+
+
+#Variable Selection
+#Tree Methods
+train515$yvar<-factor(train515$yvar)    
+tree.model<-tree(yvar~., train515)      
+summary(tree.model)
+plot(tree.model)
+text(tree.model, cex=0.5)
+
+prune5 <- prune.misclass(tree.model,best=8)  
+summary(prune5)
+plot(prune5)
+text(prune5, cex=1)
+
+ran.model <- randomForest(yvar~., data=train515, mtry=5) 
+summary(ran.model)
+
+#doesn't work
+nn<-neuralnet(yvar~ORB_a_5+ORB_h_5, data=train515, hidden=c(3,3), rep=5)
+plot(nn)
+pred<-compute(nn, iris[-5])$net.result
+
+#gradient boosting
+gb=gbm(yvar~., data=train515, cv.folds=5)
+gb$cv.error
+
+#next to do: .  look up neural networks.  look up gradient boosting
+
+### Neural Network
+fit_nn<-function(train) {
+  library(neuralnet)
+  nn<-neuralnet(yvar~m1, data=train, hidden=c(3,3), rep=5)
+  plot(nn)
+  pred<-compute(nn, iris[-5])$net.result
+}
+
+
+Generalized Boosting Model
+#i tried using this, but it crashed my computer, lol
+
+
+#old stuff
+
 train_515r=train[,c("Def.FTFGA_a_5", "EFG_a_5", "EFG_h_15", "Win.Pct_a_15", "Win.Pct_h_15", "Def.EFG_h_15", "Def.TOV_h_15", "FTFGA_h_15", "TOV_h_15", "Win_5")]
 train_515r=cbind(train_515r[,-ncol(train_515r)], yvar=as.factor(train_515r[,"Win_5"]))
 p2.model<-svm(yvar~., data=train_515r, kernel="linear", cost=.01, type="C")     #have to update cost/gamma/degree.  linear, radial, polynomial, possibly train.p2a

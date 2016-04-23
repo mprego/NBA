@@ -9,6 +9,7 @@ from nba_py import *
 from nba_py import team
 from nba_py import game
 from nba_py.constants import *
+from Dunks_experiment import *
 import pandas as pd
 import datetime as dt
 import numpy as np
@@ -87,7 +88,7 @@ def lastNGames(team_id, end_dt, n, schedule):
     last=last.sort_values('Date', ascending=False)
     last=last.reset_index(drop=True)
     length=min(n,len(last))
-    lastn=pd.DataFrame(index=range(0,length), columns=['Date', 'Game ID', 'Team ID', 'Home', 'Score', 'Opp Score', 'Win', 'EFG', 'Opp EFG', 'TOV', 'Opp TOV', 'ORB', 'Opp ORB', 'FTFGA', 'Opp FTFGA'])    
+    lastn=pd.DataFrame(index=range(0,length), columns=['Date', 'Game ID', 'Team ID', 'Home', 'Score', 'Opp Score', 'Win', 'EFG', 'Opp EFG', 'TOV', 'Opp TOV', 'ORB', 'Opp ORB', 'FTFGA', 'Opp FTFGA', 'Dunk Score', 'Opp Dunk Score', 'Dunk Win'])    
     for i in range(0,length):
         lastn.ix[i,'Date']=last.ix[i, 'Date']
         lastn.ix[i,'Team ID']=team_id
@@ -104,6 +105,8 @@ def lastNGames(team_id, end_dt, n, schedule):
             lastn.ix[i,'Opp ORB']=last.ix[i,'Away ORB']
             lastn.ix[i,'FTFGA']=last.ix[i,'Home FTFGA']
             lastn.ix[i,'Opp FTFGA']=last.ix[i,'Away FTFGA']
+            lastn.ix[i,'Dunk Score']=last.ix[i,'h_dunk_score']
+            lastn.ix[i,'Opp Dunk Score']=last.ix[i,'a_dunk_score']
         else:
             lastn.ix[i,'Home']=0
             lastn.ix[i,'Score']=last.ix[i,'Away Team Score']
@@ -116,10 +119,16 @@ def lastNGames(team_id, end_dt, n, schedule):
             lastn.ix[i,'Opp ORB']=last.ix[i,'Home ORB']
             lastn.ix[i,'FTFGA']=last.ix[i,'Away FTFGA']
             lastn.ix[i,'Opp FTFGA']=last.ix[i,'Home FTFGA']
+            lastn.ix[i,'Dunk Score']=last.ix[i,'a_dunk_score']
+            lastn.ix[i,'Opp Dunk Score']=last.ix[i,'h_dunk_score']
         if lastn.ix[i,'Score']>lastn.ix[i,'Opp Score']:
             lastn.ix[i,'Win']=1
         else:
             lastn.ix[i,'Win']=0
+        if lastn.ix[i,'Dunk Score']>lastn.ix[i,'Opp Dunk Score']:
+            lastn.ix[i,'Dunk Win']=1
+        else:
+            lastn.ix[i,'Dunk Win']=0
     return lastn
 
 
@@ -127,25 +136,25 @@ def lastNGames(team_id, end_dt, n, schedule):
 # Requires team, current date, game on current date, number of games to go back, and full schedule
 def lastNStats(team_id, end_dt, game_id, n, schedule):
     lastngames=lastNGames(team_id, end_dt, n, schedule)
-    lastnstats=pd.DataFrame(index=range(0,1), columns=['Game_ID', 'BTB', 'n games', 'Win Pct', 'EFG', 'Def EFG', 'TOV', 'Def TOV', 'ORB', 'Def ORB', 'FTFGA', 'Def FTFGA'])
+    lastnstats=pd.DataFrame(index=range(0,1), columns=['Game_ID', 'BTB', 'n games', 'Win Pct', 'EFG', 'Def EFG', 'TOV', 'Def TOV', 'ORB', 'Def ORB', 'FTFGA', 'Def FTFGA', 'Dunk Score', 'Def Dunk Score'])
     lastnstats.ix[0,'Game_ID']=game_id
     lastnstats.ix[0,'n games']=len(lastngames.ix[:,0])
-    if lastnstats.ix[0,'n games'] ==0:       #if there are not previous games
+    if lastnstats.ix[0,'n games'] ==0:       #if there are no previous games
         lastnstats.ix[0, 'BTB']=0
-        for c in range(0,9):
+        for c in range(0,11):
             lastnstats.ix[0,c+3]=0
     else:
         if (end_dt-lastngames.ix[0,'Date']).days==1:
             lastnstats.ix[0,'BTB']=1
         else:
             lastnstats.ix[0,'BTB']=0
-        for c in range(0,9):
+        for c in range(0,11):
             lastnstats.ix[0,c+3]=np.mean(lastngames.ix[:,c+6])
     return lastnstats
     
     
 # Creates the 2014-2015 NBA schedule with the 4 factors added in
-def create_2014_schedule(n, schedule):
+def create_2014_schedule():
     create_schedule(dt.datetime(2014,10,28), dt.datetime(2014,11,30)).to_csv('sched1.csv', index=False)
     sched1=add_factors(pd.read_csv('sched1.csv'))
     sched1.to_csv('sched1.csv', index=False)
@@ -170,9 +179,14 @@ def create_2014_schedule(n, schedule):
     sched6=add_factors(pd.read_csv('sched6.csv'))
     sched6.to_csv('sched6.csv', index=False)
     
-    return pd.concat([sched1, sched2, sched3, sched4, sched5, sched6])
+    schedule=pd.concat([sched1, sched2, sched3, sched4, sched5, sched6])
     
+    # Adds in Dunk Data for each team 
+    schedule_dd=create_dunk_data(schedule)
     
+    return scheudle_dd
+        
+
 # Creates DF of games with all input variables necessary for stats model
 # Requires start and end date (inclusive), number of n games back, and DF of entire schedule
 def create_train_data(st_dt, end_dt, n, schedule):
@@ -186,7 +200,6 @@ def create_train_data(st_dt, end_dt, n, schedule):
         data_a=lastNStats(score_set.ix[row, 'Away ID'], score_set.ix[row,'Date'], score_set.ix[row, 'Game_ID'], n,schedule)
         data=data.append(pd.merge(data_h, data_a, how='inner', on='Game_ID', suffixes=('_h', '_a')))
         data=data.reset_index(drop=True)
-        data.ix[row, 'Home']=1
         data.ix[row, 'Win']=score_set.ix[row, 'Home Team Win']
     return data  
     
@@ -194,28 +207,6 @@ def create_train_data(st_dt, end_dt, n, schedule):
 
 # Code to test the methods made above
 if __name__ == '__main__':
-    
-    #test of create_schedule()    
-    #print create_schedule(dt.datetime(2014,1,1), dt.datetime(2014,1,2))
-    
-    #test of add_factors()
-    #test_sched=create_schedule(dt.datetime(2014,1,1), dt.datetime(2014,1,2))
-    #print add_factors(test_sched)
-    
-    #test of lastNGames()
-    #test_sched=create_schedule(dt.datetime(2014,1,1), dt.datetime(2014,1,2))
-    #test_sched=add_factors(test_sched)
-    #print lastNGames(test_sched.ix[0,'Home ID'], dt. datetime(2014, 1, 3), 5, test_sched)
-    
-    #test of lastNStats()
-    #test_sched=create_schedule(dt.datetime(2014,1,1), dt.datetime(2014,1,5))
-    #test_sched=add_factors(test_sched)
-    #print lastNStats(test_sched.ix[33,'Home ID'], test_sched.ix[33,'Date'], test_sched.ix[33,'Game_ID'], 5, test_sched)
-    
-    #test of create_train_data()
-    #test_sched=create_schedule(dt.datetime(2014,1,1), dt.datetime(2014,1,5))
-    #test_sched=add_factors(test_sched)
-    #print create_train_data(dt.datetime(2014,1,5), dt.datetime(2014,1,5), 5, test_sched)
     
     #code to make dataset of 5 and 15 last games in datset
     season_start=dt.datetime(2014,10,28)  #start date for 2014-2015 season
@@ -228,14 +219,28 @@ if __name__ == '__main__':
 #    data515=pd.merge(data5, data15, how='inner', on='Game_ID', suffixes=('_5', '_15'))
 #    data515.to_csv('data515.csv', index=False)
     schedule=pd.read_csv('schedule.csv')
-    data5t=create_train_data(dt.datetime(2015, 3,15), dt.datetime(2015, 4,10), 5, schedule)
-    data15t=create_train_data(dt.datetime(2015, 3,15), dt.datetime(2015, 4,10), 15, schedule)
+    #data5=create_train_data(dt.datetime(2014,11,15), dt.datetime(2015,4,10), 5, schedule)
+    #data15=create_train_data(dt.datetime(2014,11,15), dt.datetime(2015,4,10), 15, schedule)
+    data_all=create_train_data(dt.datetime(2014,11,15), dt.datetime(2015,4,10), 82, schedule)
+    #data=pd.merge(data5, data15, how='inner', on='Game_ID', suffixes=('_5', '_15'))
+    data=pd.merge(data, data_all, how='inner', on='Game_ID', suffixes=('', '_all'))
+    data.to_csv('data.csv', index=False)
     
-    data515test=pd.merge(data5t, data15t, how='inner', on='Game_ID', suffixes=('_5', '_15'))
-    data515test.to_csv('data515test.csv', index=False)
-        
+#    data5t=create_train_data(dt.datetime(2015, 3,15), dt.datetime(2015, 4,10), 5, schedule)
+#    data15t=create_train_data(dt.datetime(2015, 3,15), dt.datetime(2015, 4,10), 15, schedule)
+#    
+#    data515test=pd.merge(data5t, data15t, how='inner', on='Game_ID', suffixes=('_5', '_15'))
+#    data515test.to_csv('data515test.csv', index=False)
+#        
         #some of my games has a suspiciously low number of x previous games.  see why that is
+#    
+#    #signals code is done
+#    from os import system
+#    system("say Code is done")
     
-    #signals code is done
-    from os import system
-    system("say Code is done")
+    
+#    dunk_data=pd.read_csv('dunk_data.csv')
+#    dunk_data=dunk_data[['Game_ID', 'h_dunk_score', 'a_dunk_score', 'h_dunk_win']] 
+#    new_sched=pd.merge(schedule, dunk_data, how='inner', on='Game_ID')
+#    new_sched.to_csv('schedule.csv', index=False)
+#    
