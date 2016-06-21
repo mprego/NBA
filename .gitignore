@@ -8,4 +8,7 @@ Old Files/*
 *.csv
 *init__.py
 .Rhistory
-*/.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+*/.idea/*
+
+.DS_Store
