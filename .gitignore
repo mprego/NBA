@@ -2,3 +2,8 @@ Old Files/*
 /Dev/*
 *.pyc
 *.csv
+*.DS_Store
+*.xml
+*.html
+*.csv
+*init__.py
