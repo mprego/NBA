@@ -17,8 +17,8 @@ class Player(object):
         else:
             self.p_id = pid
             self.desc = self.get_desc()
-            self.f_name = self.desc.iloc(0)['FIRST_NAME']
-            self.l_name = self.desc.iloc(0)['LAST_NAME']
+            self.f_name = self.desc.ix[0, 'FIRST_NAME']
+            self.l_name = self.desc.ix[0, 'LAST_NAME']
         self.game_logs = self.get_game_logs()
 
     def get_desc(self):
