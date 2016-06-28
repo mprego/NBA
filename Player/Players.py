@@ -3,11 +3,13 @@ from Player import Player
 from nba_py import player
 
 class Players(object):
-    def __init__(self, season, test_size = -1):
+    def __init__(self, season, start=-1, end=-1):
         self.season = season
         self.player_list = player.PlayerList().info()
-        if test_size != -1:
-            self.player_list = self.player_list.ix[0:test_size,:]
+        if start != -1:
+            self.player_list = self.player_list.ix[start:,:]
+        if end != -1:
+            self.player_list = self.player_list.ix[0:end,:]
         self.players = self.add_players()
 
     def add_players(self):
