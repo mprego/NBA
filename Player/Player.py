@@ -15,7 +15,6 @@ class Player(object):
             self.f_name = f_name
             self.l_name = l_name
             self.p_id = player.get_player(f_name, l_name).values[0]
-            print self.p_id
             self.desc = self.get_desc()
         else:
             self.p_id = pid
@@ -23,6 +22,10 @@ class Player(object):
             self.f_name = self.desc.ix[0, 'FIRST_NAME']
             self.l_name = self.desc.ix[0, 'LAST_NAME']
         self.game_logs = self.get_game_logs()
+        self.model_list = {}
+
+    def set_model(self, target, model):
+        self.model_list[target] = model
 
     def get_desc(self):
         if os.path.isfile('player_desc.csv'):
@@ -58,7 +61,7 @@ class Player(object):
         saved_glogs.to_csv('player_glogs.csv', index=False)
         return game_logs
 
-    def get_stats(self, date_col, id_col, target_col, col_list, n):
+    def get_stats(self, game_logs, date_col, id_col, target_col, col_list, n):
         stats=pd.DataFrame()
         self.game_logs[date_col] = pd.to_datetime(self.game_logs[date_col])
         for index, g in self.game_logs.sort_values(date_col).iterrows():
