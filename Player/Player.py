@@ -61,7 +61,7 @@ class Player(object):
         saved_glogs.to_csv('player_glogs.csv', index=False)
         return game_logs
 
-    def get_stats(self, game_logs, date_col, id_col, target_col, col_list, n):
+    def get_stats(self, game_logs, date_col, id_col, target_col, col_list, n, carry_through_list=[]):
         stats=pd.DataFrame()
         self.game_logs[date_col] = pd.to_datetime(self.game_logs[date_col])
         for index, g in self.game_logs.sort_values(date_col).iterrows():
@@ -72,6 +72,8 @@ class Player(object):
             stats.set_value(index, id_col, g[id_col])
             stats.set_value(index, target_col, g[target_col])
             stats.set_value(index, 'n_games', len(past_games))
+            for col in carry_through_list:
+                stats.set_value(index, col, g[col])
             for col in col_list:
                 avg_val = np.mean(past_games[col])
                 stats.set_value(index, (col + '_avg_' + str(n)), avg_val)
